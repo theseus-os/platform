@@ -148,14 +148,14 @@ pub trait HidInput: Driven { /* todo */ }
 pub trait Timer: Driven { /* todo */ }
 
 pub struct Platform {
-    // no addition after bootstrapping:
+    // set before captain starts:
     pub processors: Box<[Lock<dyn Processor>]>,
     pub memory_manager: Lock<dyn MemoryManager>,
     pub power_manager: Lock<dyn PowerManager>,
     pub logger: Lock<dyn Logger>,
     pub rng: Lock<dyn Rng>,
 
-    // can be empty after bootstrapping:
+    // set before and after captain has started:
     pub int_controllers: Vec<Lock<dyn IntController>>,
     pub pci_controllers: Vec<Lock<dyn PciController>>,
     pub usb_controllers: Vec<Lock<dyn UsbController>>,
