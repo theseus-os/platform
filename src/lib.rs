@@ -52,7 +52,7 @@ pub type Mapping = Box<dyn Memory<Target = [u8]>>;
 
 pub trait MemoryManager {
     fn frame_size(&self) -> u64;
-    fn map_memory(&mut self, page: u64, count: usize, frame: Frame) -> MsgResult<Mapping>;
+    fn map_memory(&mut self, page: u64, count: usize, options: MappingOptions) -> MsgResult<Mapping>;
 }
 
 pub trait PowerManager { /* todo */ }
