@@ -15,13 +15,48 @@ pub type MsgResult<T> = Result<T, &'static str>;
 
 pub type Lock<T> = RwLock<Box<T>>;
 
-pub trait Processor {
+pub trait InterruptContext {
+    fn stack_ptr(&self) -> usize;
+    fn instruction_ptr(&self) -> usize;
+    fn restore(&self) -> !;
+}
+
+pub enum InterruptHandlerAction<K> {
+    Stub(fn(&dyn InterruptContext)),
+    NeedPlatform(fn(&dyn InterruptContext, &mut Platform<K>)),
+    NeedKernel(fn(&dyn InterruptContext, &mut K)),
+    NeedPlatformAndKernel(fn(&dyn InterruptContext, &mut Platform<K>, &mut K)),
+}
+
+pub struct InterruptHandler<K> {
+    pub name: String,
+    pub action: InterruptHandlerAction<K>,
+}
+
+pub trait Core<K> {
     fn is_in_use(&self) -> bool;
     fn start(&mut self) -> MsgResult<()>;
     fn is_boot_processor(&self) -> bool;
     fn frequency_hz(&self) -> u64;
     fn manufacturer(&self) -> &str;
     fn model(&self) -> &str;
+
+    fn int_handlers(&self) -> &[(usize, InterruptHandler<K>)];
+
+    fn register_int_handler(
+        &mut self,
+        int: usize,
+        handler: InterruptHandler<K>,
+        prefer_fast: bool,
+    ) -> MsgResult<()>;
+
+    fn unregister_int_handler(
+        &mut self,
+        int: usize,
+    ) -> MsgResult<InterruptHandler<K>>;
+
+    fn disable_interrupts(&mut self);
+    fn enable_interrupts(&mut self);
 }
 
 pub enum Frame {
@@ -68,8 +103,6 @@ pub trait Driven {
     fn manufacturer(&self) -> &str;
     fn model(&self) -> &str;
 }
-
-pub trait IntController: Driven { /* todo */ }
 
 pub struct PciDeviceInfo {
     pub vendor_id: u16,
@@ -147,16 +180,15 @@ pub trait HidInput: Driven { /* todo */ }
 
 pub trait Timer: Driven { /* todo */ }
 
-pub struct Platform {
+pub struct Platform<K> {
     // set before captain starts:
-    pub processors: Box<[Lock<dyn Processor>]>,
+    pub cores: Box<[Lock<dyn Core<K>>]>,
     pub memory_manager: Lock<dyn MemoryManager>,
     pub power_manager: Lock<dyn PowerManager>,
     pub logger: Lock<dyn Logger>,
     pub rng: Lock<dyn Rng>,
 
     // set before and after captain has started:
-    pub int_controllers: Vec<Lock<dyn IntController>>,
     pub pci_controllers: Vec<Lock<dyn PciController>>,
     pub usb_controllers: Vec<Lock<dyn UsbController>>,
     pub nic_controllers: Vec<Lock<dyn NicController>>,
@@ -172,4 +204,4 @@ pub struct Platform {
     pub timers: Vec<Lock<dyn Timer>>,
 }
 
-pub type DriverInit = fn(&mut Platform) -> MsgResult<()>;
+pub type DriverInit<K> = fn(&mut Platform<K>) -> MsgResult<()>;
