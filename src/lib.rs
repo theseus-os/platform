@@ -9,7 +9,7 @@ use alloc::boxed::Box;
 use core::ops::Deref;
 use core::ops::DerefMut;
 
-use spin::RwLock;
+pub use spin::RwLock;
 
 pub type MsgResult<T> = Result<T, &'static str>;
 
