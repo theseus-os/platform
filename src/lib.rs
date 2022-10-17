@@ -16,12 +16,11 @@ pub type MsgResult<T> = Result<T, &'static str>;
 pub type Lock<T> = RwLock<Box<T>>;
 
 pub trait InterruptContext {
-    fn stack_ptr(&self) -> usize;
-    fn instruction_ptr(&self) -> usize;
     fn restore(&self) -> !;
 }
 
 pub enum InterruptHandlerAction<K> {
+    Procedure(fn()),
     Stub(fn(&dyn InterruptContext)),
     NeedPlatform(fn(&dyn InterruptContext, &mut Platform<K>)),
     NeedKernel(fn(&dyn InterruptContext, &mut K)),
@@ -41,16 +40,16 @@ pub trait Core<K> {
     fn manufacturer(&self) -> &str;
     fn model(&self) -> &str;
 
-    fn int_handlers(&self) -> &[(usize, InterruptHandler<K>)];
+    fn interrupt_handlers(&self) -> &[(usize, InterruptHandler<K>)];
 
-    fn register_int_handler(
+    fn register_interrupt_handler(
         &mut self,
         int: usize,
         handler: InterruptHandler<K>,
         prefer_fast: bool,
     ) -> MsgResult<()>;
 
-    fn unregister_int_handler(
+    fn unregister_interrupt_handler(
         &mut self,
         int: usize,
     ) -> MsgResult<InterruptHandler<K>>;
@@ -202,6 +201,9 @@ pub struct Platform<K> {
     pub video_inputs: Vec<Lock<dyn VideoInput>>,
     pub hid_inputs: Vec<Lock<dyn HidInput>>,
     pub timers: Vec<Lock<dyn Timer>>,
+
+    // additional fields the kernel might want to add:
+    pub kernel: Lock<Option<K>>,
 }
 
 pub type DriverInit<K> = fn(&mut Platform<K>) -> MsgResult<()>;
